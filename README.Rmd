@@ -1,0 +1,199 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# labMath <img src='man/figures/logo2.png' align="right" height="300" /></a>
+
+The goal of labMath is to help with fundamental laboratory calculations, allowing research scientists to spend less time performing routine arithmetic computations and instead use that energy to perform their experiments of interest! 
+
+## Installation
+
+You can install the development version of labMath from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("harvard-stat108s23/project2-group19")
+```
+
+##Loading labMath library
+
+```{r}
+library(labMath)
+```
+
+## Function #1: Fold Change Calculations
+
+Relative fold change calculations are often used in RT-qPCR data analysis to see how genetic expression varies across different samples of interest. 
+
+This function calculates the relative fold change of users' data across different replicates, which can later be used in conjunction with the **fold_change_graph** function to visualize differences in genetic expression between samples of interest.
+
+Provided as part of the package is a toy threshold cycle (Ct) dataset, called **toy_Ct_data**, which mimics real data that a researcher would receive from the thermocycler after performing an RT-qPCR experiment.
+
+```{r}
+toy_Ct_data
+```
+
+*NOTE: It's important to follow the provided naming conventions, using the toy data set as an example for how to set up your own data of interest to be used by this function.*
+
+```{r}
+colnames(toy_Ct_data)
+```
+
+When calling the fold_change function on toy_Ct_data, we see 11 more columns get added, which are each related to another calculation performed for the final determination of the relative fold change in gene expression.
+
+The first group of calculations **(delta_Ct_Rep)** takes the difference between the treatment and control groups across each replicate. 
+
+```{r}
+library(dplyr) #loaded to be able to use the pipe function
+
+fold_change(toy_Ct_data) %>%
+  select(delta_Ct_Rep1, delta_Ct_Rep2, delta_Ct_Rep3)
+
+```
+
+The second group of calculations **(linearized_Ct_Rep)** takes the delta_Ct values for each replicate and raises its negative value to the power of 2. In equation form this is represented as: 2^(-1*delta_Ct_rep). 
+
+```{r}
+
+fold_change(toy_Ct_data) %>%
+  select(linearized_Ct_Rep1, linearized_Ct_Rep2, linearized_Ct_Rep3)
+
+```
+
+These values are then averaged across each sample row-wise, so that the **lin_avg_by_condition** column represents the average linearized values for a given observation.  
+
+```{r}
+
+fold_change(toy_Ct_data) %>%
+  select(lin_avg_by_condition)
+
+```
+
+From here, you can calculate the relative fold change across the replicates by dividing the linearized_Ct_Rep values by the minimum of the lin_avg_by_condition (which in this toy example is 4.42). By finding the average of these values rowwise, you can find the average relative fold change value across all three replicates for a given sample condition. These are the values which are then visualized and graphed in the fold_change_graph function to see how gene expression has changed across samples. 
+
+```{r}
+
+fold_change(toy_Ct_data) %>%
+  select(fold_change_Rep1, fold_change_Rep2, fold_change_Rep3, fold_change_avg_by_condition)
+
+```
+
+## Function #2: Fold Change Graph
+
+As long as the naming protocols of the provided **toy_relative_fold_change_data** are followed, users can visualize their relative fold change data easily with the **fold_change_graph** function. 
+
+```{r}
+fold_change_graph(toy_relative_fold_change_data)
+```
+
+You can also use the previous fold_change function to create these data sets for you based on Ct data collected in the lab. 
+
+```{r}
+function_fold_change_data <- fold_change(toy_Ct_data)
+
+fold_change_graph(function_fold_change_data) 
+
+```
+
+*NOTE: It's important to follow the provided naming conventions, using the toy data set as an example for how to set up your own data of interest to be used by this function.*
+
+```{r}
+colnames(toy_relative_fold_change_data)
+```
+
+## Function #3: Solution Dilution 
+
+The most standard laboratory math calculation is C1V1 = C2V2, where the left side of the equation represents the initial concentration of the solute of interest times its initial volume, while the right side of the equation represents the final concentration of the solution of interest times its final volume.
+
+This function seeks to speed up the math calculations necessary to calculate the initial volume for the samples of interest to create a solution for users' specified final volume and concentration.
+
+To use this function, users must supply 3 variables: 
+
+* a dataset that includes the samples of interest and their respective, initial concentrations (with the **toy_solution_dilution_data** demonstrating what this set-up of the table looks like)
+* the final volume of interest for the solution
+* the final mass OR the final concentration of the solute of interest in the solution. 
+
+```{r}
+#example datasets to use the function on
+toy_solution_dilution_data
+
+toy_sanger_sequencing_samples
+```
+
+*NOTE: It's important to follow the provided naming conventions, using the toy data set as an example for how to set up your own data of interest to be used by this function.*
+
+```{r}
+colnames(toy_solution_dilution_data)
+```
+
+
+```{r}
+#using solution_dilution function knowing the final mass 
+solution_dilution(toy_solution_dilution_data, final_volume = 50, final_concentration = 200)
+
+#using solution_dilution function knowing the final concentration
+solution_dilution(toy_sanger_sequencing_samples, final_volume = 14, final_mass = 500)
+
+```
+
+## Function #4: Gibson Assembly Components 
+
+The Gibson Assembly protocol requires very specific component measurements to ensure that the reaction occurs properly. 
+
+Notably, for a 2-3 fragment assembly, the total amount of fragments must range between 0.02 to 0.5 picomoles for a total reaction volume of 20uL, which includes the fragments, the Gibson Assembly Master Mix, and deionized water. Conversely, for a 4-6 fragment assembly, the total amount of fragments must range between 0.2 to 1 picomoles for a total reaction volume of 20uL. 
+
+To use this function, users must supply 3 variables: 
+
+* a dataset that includes the samples of interest and their respective, sequence length and initial concentrations (with the **toy_fragment_info_data** demonstrating what this set-up of the table looks like)
+* the ratio of picomoles for each fragment in the reaction 
+* the total amount of picomoles needed for the reaction  
+
+```{r}
+#example dataset to use the function on
+toy_fragment_info_data
+```
+
+*NOTE: It's important to follow the provided naming conventions, using the toy data set as an example for how to set up your own data of interest to be used by this function.*
+
+```{r}
+colnames(toy_fragment_info_data)
+```
+
+When using the gibson_assembly_components function a list will be returned that includes updates to the dataframe provided and the amount of water that should be added to the reaction mixture to get to 20uL. 
+
+```{r}
+#show the full list 
+gibson_assembly_components(toy_fragment_info_data, 
+                           picomole_ratio = c(2,2,1), picomole_total = 0.50)
+
+```
+
+To get the individual components of the list, so that you only view the dataframe or the amt_water variable, use the *$* sign as shown below. 
+
+```{r}
+#show only the updated information in the dataframe 
+gibson_assembly_components(toy_fragment_info_data, 
+                           picomole_ratio = c(2,2,1), 
+                           picomole_total = 0.50)$fragment_volume %>%
+  select(picomoles, necessary_nanograms, volume_req)
+
+```
+
+```{r}
+#show only the amount of water necessary for the gibson assembly reaction  
+gibson_assembly_components(toy_fragment_info_data, 
+                           picomole_ratio = c(2,2,1), 
+                           picomole_total = 0.50)$amt_water
+
+```
